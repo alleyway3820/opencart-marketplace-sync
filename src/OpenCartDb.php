@@ -70,8 +70,8 @@ class OpenCartDb
                     model = ?, sku = ?, quantity = ?, stock_status_id = 6,
                     image = ?, manufacturer_id = ?, shipping = 1, price = ?,
                     points = 0, tax_class_id = 9, rating = 0, date_available = ?,
-                    weight = 0, weight_class_id = 1, length = 0, width = 0,
-                    height = 0, length_class_id = 1, subtract = 1, minimum = 1,
+                    weight = ?, weight_class_id = ?, length = ?, width = ?,
+                    height = ?, length_class_id = ?, subtract = 1, minimum = 1,
                     sort_order = 1, status = ?, date_added = ?, date_modified = ?"
             );
             $stmt->execute([
@@ -82,6 +82,12 @@ class OpenCartDb
                 (int)($data["manufacturer_id"] ?? 0),
                 $data["price"] ?? "0.0000",
                 $today,
+                $data["weight"] ?? "0.0000",
+                (int)($data["weight_class_id"] ?? 1),
+                $data["length"] ?? "0.0000",
+                $data["width"] ?? "0.0000",
+                $data["height"] ?? "0.0000",
+                (int)($data["length_class_id"] ?? 1),
                 (int)($data["status"] ?? 1),
                 $now,
                 $now,
