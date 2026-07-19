@@ -99,6 +99,7 @@ function handleSyncAll(array $config): void
         $updated = 0;
         $errors = 0;
         $skipped = 0;
+        $throttle = max(100, (int)($config['sync']['throttle_ms'] ?? 250));
 
         foreach ($items as $item) {
             $itemId = $item['item_id'] ?? '';
@@ -175,6 +176,10 @@ function handleSyncAll(array $config): void
                 echo "ERROR: " . $e->getMessage() . "\n";
                 $errors++;
             }
+            // Throttle: avoid hitting eBay rate limits
+            if ($synced < $total) {
+                usleep($throttle * 1000);
+            }
         }
 
         echo "\n=== Sync Complete ===\n";
@@ -204,7 +209,9 @@ function handleSyncOne(array $config, string $itemId): void
     try {
         $ocDb = new OpenCartDb(connectOpenCart($config['opencart']), $config['opencart']['prefix']);
         $imageHandler = new ImageHandler($config['images']);
-        $mapper = new DataMapper([], $config['sync']);
+        $catMap = $ocDb->getCategoryMap();
+        $mapper = new DataMapper($catMap, $config['sync']);
+        $mapper->setCategoryMap($catMap);
         $ebayApi = new EbayApi($config['ebay_api']);
 
         echo "Fetching item $itemId from eBay API...\n";
@@ -223,6 +230,10 @@ function handleSyncOne(array $config, string $itemId): void
 
         // Map to OpenCart
         $productData = $mapper->mapToProduct($itemData);
+        // Auto-categorize based on title keywords
+        $productData['category_id'] = $mapper->resolveCategory($productData['name'] ?? '');
+
+        echo "  Category: " . ($catMap[$productData['category_id']] ?? 'Default') . "\n";
 
         // Check existing
         $existingId = $ocDb->getProductByListingId($itemId);

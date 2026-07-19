@@ -288,8 +288,8 @@ class OpenCartDb
 
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->prefix}category
-                    (parent_id, image, top, column, sort_order, status, date_added, date_modified)
-                 VALUES (?, , 0, 1, 1, 1, ?, ?)"
+                    (parent_id, image, `top`, `column`, sort_order, status, date_added, date_modified)
+                 VALUES (?, '', 0, 1, 1, 1, ?, ?)"
             );
             $stmt->execute([$parentId, $now, $now]);
             $categoryId = (int)$this->db->lastInsertId();
@@ -298,7 +298,7 @@ class OpenCartDb
                 "INSERT INTO {$this->prefix}category_description
                     (category_id, language_id, name, description, meta_title,
                      meta_description, meta_keyword)
-                 VALUES (?, 1, ?, , ?, , )"
+                 VALUES (?, 1, ?, '', ?, '', '')"
             );
             $stmt->execute([$categoryId, $name, $name]);
 

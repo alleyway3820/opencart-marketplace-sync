@@ -116,6 +116,75 @@ class DataMapper
         return implode("\n", $parts);
     }
 
+    // ─── Keyword-based auto-categorization ───
+    private array $keywordCategoryMap = [
+        // Keywords => OpenCart category name to find/create
+        'cassette' => 'Music',
+        'cd' => 'Music',
+        'record' => 'Music',
+        'vinyl' => 'Music',
+        'dvd' => 'Movies & TV',
+        'blu-ray' => 'Movies & TV',
+        'phone' => 'Phones & PDAs',
+        'iphone' => 'Phones & PDAs',
+        'tablet' => 'Tablets',
+        'ipad' => 'Tablets',
+        'computer' => 'Desktops',
+        'laptop' => 'Laptops & Notebooks',
+        'camera' => 'Cameras',
+        'printer' => 'Printers',
+        'monitor' => 'Monitors',
+        'game' => 'Software',
+        'nintendo' => 'Software',
+        'playstation' => 'Software',
+        'xbox' => 'Software',
+        'headphone' => 'MP3 Players',
+        'speaker' => 'MP3 Players',
+        'ipod' => 'MP3 Players',
+        'shirt' => 'Apparel',
+        'shoes' => 'Apparel',
+    ];
+
+    /**
+     * Resolve the best OpenCart category for an item based on title/keywords.
+     *
+     * @param string $title Item title
+     * @return int OpenCart category_id (default if no match)
+     */
+    public function resolveCategory(string $title): int
+    {
+        $lower = strtolower($title);
+        foreach ($this->keywordCategoryMap as $keyword => $catName) {
+            if (str_contains($lower, $keyword)) {
+                // Find or create the category
+                $id = $this->findOrCreateCategory($catName);
+                if ($id !== null) {
+                    return $id;
+                }
+            }
+        }
+        return (int)($this->config['default_category_id'] ?? 20);
+    }
+
+    private function findOrCreateCategory(string $name): ?int
+    {
+        // Check our in-memory map first (passed from OpenCartDb)
+        foreach ($this->categoryMap as $id => $catName) {
+            if (strcasecmp($catName, $name) === 0) {
+                return $id;
+            }
+        }
+        return null; // Category not found in our map
+    }
+
+    /**
+     * Update category map (called after fetching from DB).
+     */
+    public function setCategoryMap(array $map): void
+    {
+        $this->categoryMap = $map;
+    }
+
     /**
      * Resolve eBay category to OpenCart category.
      */
