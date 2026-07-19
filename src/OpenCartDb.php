@@ -69,7 +69,7 @@ class OpenCartDb
                 "INSERT INTO {$this->prefix}product SET
                     model = ?, sku = ?, quantity = ?, stock_status_id = 6,
                     image = ?, manufacturer_id = ?, shipping = 1, price = ?,
-                    points = 0, tax_class_id = 9, date_available = ?,
+                    points = 0, tax_class_id = 9, rating = 0, date_available = ?,
                     weight = 0, weight_class_id = 1, length = 0, width = 0,
                     height = 0, length_class_id = 1, subtract = 1, minimum = 1,
                     sort_order = 1, status = ?, date_added = ?, date_modified = ?"
@@ -95,7 +95,7 @@ class OpenCartDb
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->prefix}product_description SET
                     product_id = ?, language_id = 1, name = ?, description = ?,
-                    tag = , meta_title = ?, meta_description = , meta_keyword = "
+                    tag = '', meta_title = ?, meta_description = '', meta_keyword = ''"
             );
             $stmt->execute([$productId, $name, $data["description"] ?? "", $metaTitle]);
 
@@ -121,7 +121,7 @@ class OpenCartDb
             $keyword = $this->nameToUrl($name);
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->prefix}seo_url SET
-                    language_id = 1, store_id = ?, key = product_id, value = ?,
+                    language_id = 1, store_id = ?, `key` = 'product_id', `value` = ?,
                     keyword = ?"
             );
             $stmt->execute([$storeId, (string)$productId, $keyword]);

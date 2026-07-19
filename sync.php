@@ -61,6 +61,7 @@ match ($command) {
     'sync:all' => handleSyncAll($config),
     'sync:one' => handleSyncOne($config, $argv[2] ?? ''),
     'sync:seller' => handleSyncSeller($config, $argv[2] ?? ''),
+    'sync:preview' => handleSyncPreview($config, $argv[2] ?? '', $argv[3] ?? ''),
     'status' => handleStatus($config),
     'ebay:search' => handleEbaySearch($config, array_slice($argv, 2)),
     'oc:categories' => handleOcCategories($config),
@@ -507,6 +508,76 @@ function handleSyncSeller(array $config, string $sellerName): void
 }
 
 /**
+ * Preview eBay listings without syncing, showing import status.
+ *
+ * Usage: php sync.php sync:preview SELLER_USERNAME [keyword]
+ */
+function handleSyncPreview(array $config, string $sellerName, string $keyword = ''): void
+{
+    if (empty($sellerName)) {
+        echo "Usage: php sync.php sync:preview SELLER_USERNAME [keyword]\n";
+        echo "  keyword: product type to search (e.g. 'cassette', 'electronics')\n";
+        echo "  If empty, shows a summary of what's needed.\n\n";
+        exit(1);
+    }
+
+    try {
+        $ocDb = new OpenCartDb(connectOpenCart($config['opencart']), $config['opencart']['prefix']);
+        $ebayApi = new EbayApi($config['ebay_api']);
+
+        echo "=== eBay Listings Preview for: $sellerName ===\n\n";
+
+        if (empty($keyword)) {
+            echo "You need to specify a keyword to search by product type.\n";
+            echo "Try: php sync.php sync:preview $sellerName cassette\n";
+            echo "     php sync.php sync:preview $sellerName electronics\n";
+            echo "     php sync.php sync:preview $sellerName dvd\n\n";
+            echo "Or search directly: php sync.php ebay:search YOUR_ITEM\n";
+            return;
+        }
+
+        echo "Searching: \"$keyword\" from seller \"$sellerName\"...\n";
+        $results = $ebayApi->getSellerListings($sellerName, 50, '', $keyword);
+        $items = $results['items'] ?? [];
+        $total = $results['total'] ?? 0;
+
+        echo "Found $total total items. Showing first " . count($items) . ":\n\n";
+
+        $imported = 0;
+        $available = 0;
+
+        foreach ($items as $item) {
+            $itemId = $item['itemId'] ?? '';
+            $title = $item['title'] ?? '?';
+            $price = $item['price'] ?? [];
+            $amount = $price['value'] ?? $price[0]['value'] ?? '?';
+            
+            // Check if already imported
+            $productId = $ocDb->getProductByListingId($itemId);
+            $status = $productId ? "[IMPORTED - ID: $productId]" : "[AVAILABLE]";
+            
+            if ($productId) {
+                $imported++;
+            } else {
+                $available++;
+            }
+
+            echo "  $status $title - \$$amount\n";
+        }
+
+        echo "\nSummary:\n";
+        echo "  Available to import: $available\n";
+        echo "  Already imported: $imported\n";
+        echo "\nTo import an item: php sync.php sync:one ITEM_ID\n";
+        echo "To import all: php sync.php sync:seller SELLER\n";
+
+    } catch (Exception $e) {
+        echo "ERROR: " . $e->getMessage() . "\n";
+        exit(1);
+    }
+}
+
+/**
  * Search eBay listings.
  */
 function handleEbaySearch(array $config, array $queryParts): void
@@ -557,6 +628,7 @@ Usage:
   php sync.php sync:all           Sync all listings (from ebayflip DB)
   php sync.php sync:one ITEM_ID   Sync a single eBay item by ID (e.g. v1|12345|6789)
   php sync.php sync:seller NAME   Search eBay by seller username and sync all
+  php sync.php sync:preview KEYWD  Preview seller's items, show [AVAILABLE]/[IMPORTED]
   php sync.php status             Show sync status summary
   php sync.php ebay:search QUERY  Search eBay listings
   php sync.php oc:categories      List OpenCart categories

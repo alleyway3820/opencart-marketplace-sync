@@ -134,7 +134,7 @@ class EbayApi
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
-                'Authorization: Bearer ' . $token,
+                'Authorization: Bearer ' . $this->accessToken,
                 'Content-Type: application/json',
                 'X-EBAY-C-MARKETPLACE-ID: EBAY_US',
             ],
@@ -202,7 +202,7 @@ class EbayApi
          curl_setopt_array($ch, [
              CURLOPT_RETURNTRANSFER => true,
              CURLOPT_HTTPHEADER => [
-                 'Authorization: Bearer ' . $token,
+                 'Authorization: Bearer ' . $this->accessToken,
                  'Content-Type: application/json',
                  'X-EBAY-C-MARKETPLACE-ID: EBAY_US',
              ],
@@ -240,11 +240,12 @@ class EbayApi
       * @param string $offset Pagination offset
       * @return array Results with 'items' array and 'total'
       */
-    public function getSellerListings(string $sellerUsername, int $limit = 200, string $offset = ''): array
+    public function getSellerListings(string $sellerUsername, int $limit = 200, string $offset = '', string $keyword = ''): array
     {
-        $token = $this->authenticate();
+        $this->authenticate();
         
         $params = [
+            'q' => $keyword ?: $sellerUsername,
             'limit' => min($limit, 200),
             'filter' => 'sellers:{' . $sellerUsername . '}',
         ];
@@ -258,7 +259,7 @@ class EbayApi
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
-                'Authorization: Bearer ' . $token,
+                'Authorization: Bearer ' . $this->accessToken,
                 'Content-Type: application/json',
                 'X-EBAY-C-MARKETPLACE-ID: EBAY_US',
             ],
