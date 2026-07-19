@@ -54,15 +54,12 @@ class Usps extends \Opencart\System\Engine\Model
                     'PRIORITY_MAIL' => 'Priority Mail',
                     default => $mc,
                 };
-                $quotes[] = [
+                $quotes[$mc] = [
                     'code'         => 'usps.' . $mc,
-                    'title'        => $name,
-                    'cost'         => round($total, 2),
+                    'name'         => $name,
+                    'cost'         => $rate ?? 0,
                     'tax_class_id' => (int)($this->config->get('shipping_usps_tax_class_id') ?: 0),
-                    'text'         => $this->currency->format(
-                        $this->tax->calculate(round($total, 2), (int)($this->config->get('shipping_usps_tax_class_id') ?: 0), $this->config->get('config_tax')),
-                        $this->session->data['currency']
-                    ),
+                    'text'         => '$' . number_format((float)($rate ?? 0), 2),
                 ];
             }
         }
@@ -73,7 +70,7 @@ class Usps extends \Opencart\System\Engine\Model
 
         return [
             'code'       => 'usps',
-            'title'      => $this->language->get('text_title'),
+            'name'       => $this->language->get('text_title'),
             'quote'      => $quotes,
             'sort_order' => (int)($this->config->get('shipping_usps_sort_order') ?: 1),
             'error'      => false,
@@ -84,8 +81,18 @@ class Usps extends \Opencart\System\Engine\Model
     {
         $ck = 'usps_rate_' . md5("$origin$dest$w$l$wi$h$mc$date");
         $cached = $this->cache->get($ck);
+        // OC4 cache returns empty array when not found
+        if (is_array($cached) && empty($cached)) {
+            $cached = null;
+        }
+        if ($cached !== null && $cached !== false) {
+            if (is_numeric($cached)) {
+                return (float)$cached;
+            }
+            return null;
+        }
         if ($cached !== null) {
-            return $cached === false ? null : (float)$cached;
+            return null;
         }
 
         $body = json_encode([
@@ -100,15 +107,21 @@ class Usps extends \Opencart\System\Engine\Model
         curl_setopt_array($ch, [
             CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
             CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+            CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_HTTPHEADER => ['Content-Type: application/json', $auth],
         ]);
         $resp = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $err = curl_error($ch);
+        $errno = curl_errno($ch);
         curl_close($ch);
 
+        // Debug: log what happened
+        $debugFile = '/tmp/usps_debug.log';
+        $debug = date('Y-m-d H:i:s') . " mc=$mc origin=$origin dest=$dest w=$w rate_code=$code errno=$errno err=$err resp=" . substr($resp, 0, 200) . "\n";
+        file_put_contents($debugFile, $debug, FILE_APPEND);
+
         if ($code !== 200) {
-            $this->log->write("USPS rate error ($mc): HTTP $code");
             $this->cache->set($ck, false, 300);
             return null;
         }
