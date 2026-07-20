@@ -260,7 +260,11 @@ $(document).on('click', '.import-btn', function() {
         dataType: 'json',
         success: function(json) {
             if (json['success']) {
-                btn.html('<i class="fa fa-check"></i> Done').removeClass('btn-success').addClass('btn-info');
+                if (json['note'] === 'already_imported') {
+                    btn.html('<i class="fa fa-check"></i> Already imported').removeClass('btn-success').addClass('btn-warning');
+                } else {
+                    btn.html('<i class="fa fa-check"></i> Done').removeClass('btn-success').addClass('btn-info');
+                }
                 btn.closest('tr').find('td:nth-child(6)').text('Imported').removeClass('text-primary').addClass('text-success');
                 btn.closest('tr').find('.item-check').prop('disabled', true).prop('checked', false);
                 loadHistory();

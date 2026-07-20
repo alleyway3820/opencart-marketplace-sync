@@ -183,6 +183,26 @@ class Sync extends \Opencart\System\Engine\Controller {
             $images = new \ImageHandler($syncConfig['images']);
             
             $itemData = $api->getItem($itemId);
+            
+            // Check sync_history first (most reliable), then product SKU
+            $existingStmt = $pdo->prepare("SELECT product_id FROM oc_sync_history WHERE ebay_item_id = ? LIMIT 1");
+            $existingStmt->execute([$itemId]);
+            $existingId = $existingStmt->fetchColumn();
+            
+            if (!$existingId) {
+                $existingId = $ocDb->getProductBySku($itemId);
+            }
+            
+            if ($existingId) {
+                // Already imported — update and return
+                $json['success'] = true;
+                $json['product_id'] = (int)$existingId;
+                $json['note'] = 'already_imported';
+                $this->response->addHeader('Content-Type: application/json');
+                $this->response->setOutput(json_encode($json));
+                return;
+            }
+            
             $productData = $mapper->mapToProduct($itemData);
             $catName = $mapper->resolveCategory($itemData['title'] ?? '');
             $catId = $ocDb->ensureCategory($catName, $prodCfg['default_category_id'] ?? 20);
@@ -195,16 +215,8 @@ class Sync extends \Opencart\System\Engine\Controller {
                 if ($localImage) $productData['image'] = $localImage;
             }
             
-            $existingId = $ocDb->getProductBySku($productData['sku'] ?? $itemId);
-            
-            if ($existingId) {
-                $ocDb->updateProduct($existingId, $productData);
-                $productId = $existingId;
-                $action = 'updated';
-            } else {
-                $productId = $ocDb->createProduct($productData, $catId);
-                $action = 'imported';
-            }
+            $productId = $ocDb->createProduct($productData, $catId);
+            $action = 'imported';
             
             // Log to sync_history for audit trail
             $pdo->prepare("INSERT INTO oc_sync_history (ebay_item_id, product_id, title, price, action) VALUES (?, ?, ?, ?, ?)")
