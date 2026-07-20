@@ -240,12 +240,15 @@ class EbayApi
       * @param string $offset Pagination offset
       * @return array Results with 'items' array and 'total'
       */
-    public function getSellerListings(string $sellerUsername, int $limit = 200, string $offset = '', string $keyword = '', string $categoryId = ''): array
+    public function getSellerListings(string $sellerUsername, int $limit = 200, string $offset = '', string $keyword = '', string $categoryId = '', string $fallbackKeyword = 'dvd'): array
     {
         $this->authenticate();
         
+        // eBay Browse API requires a search term. When blank, use fallback.
+        $searchTerm = $keyword ?: $fallbackKeyword;
+        
         $params = [
-            'q' => $keyword ?: $sellerUsername,
+            'q' => $searchTerm,
             'limit' => min($limit, 200),
             'filter' => 'sellers:{' . $sellerUsername . '}',
         ];
