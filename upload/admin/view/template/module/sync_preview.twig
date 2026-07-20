@@ -18,14 +18,14 @@
     <div class="card">
       <div class="card-header"><i class="fa fa-search"></i> Browse eBay Store</div>
       <div class="card-body">
-        <form id="form-search" class="row g-3" action="javascript:void(0)">
+        <form id="form-search" class="row g-3" onsubmit="return false;">
           <div class="col-md-3">
             <label class="form-label">{{ text_seller }}</label>
             <input type="text" name="seller" value="ageek4less" class="form-control" placeholder="eBay seller"/>
           </div>
           <div class="col-md-3">
             <label class="form-label">{{ text_keyword }}</label>
-            <input type="text" name="keyword" value="" class="form-control" placeholder="Enter keyword to search"/>
+            <input type="text" name="keyword" value="" class="form-control" placeholder="Enter keyword"/>
           </div>
           <div class="col-md-3">
             <label class="form-label">Category</label>
@@ -61,9 +61,9 @@
           </div>
           <nav id="pagination-controls" style="display:none">
             <ul class="pagination pagination-sm mb-0">
-              <li class="page-item" id="prev-page"><a class="page-link" href="#" onclick="event.preventDefault(); goPage('prev')">&laquo; Prev</a></li>
+              <li class="page-item" id="prev-page"><a class="page-link" href="#" onclick="return goPage('prev')">&laquo; Prev</a></li>
               <li class="page-item disabled"><a class="page-link" id="page-info" href="#">Page 1 of 1</a></li>
-              <li class="page-item" id="next-page"><a class="page-link" href="#" onclick="event.preventDefault(); goPage('next')">Next &raquo;</a></li>
+              <li class="page-item" id="next-page"><a class="page-link" href="#" onclick="return goPage('next')">Next &raquo;</a></li>
             </ul>
           </nav>
         </div>
@@ -114,83 +114,69 @@ function doSearch() {
         dataType: 'json',
         success: function(json) {
             $('#loading').hide();
-            
             if (json['error']) {
                 $('#error-message').html(json['error']).show();
                 return;
             }
-            
-            // Update category dropdown
             var catSelect = $('#category-select');
             var currentCat = catSelect.val();
-            catSelect.find('option[value!=\"\"]').remove();
+            catSelect.find('option[value!=""]').remove();
             if (json['categories']) {
                 for (var k = 0; k < json['categories'].length; k++) {
                     var c = json['categories'][k];
-                    catSelect.append('<option value=\"' + c['id'] + '\">' + c['name'] + '</option>');
+                    catSelect.append('<option value="' + c['id'] + '">' + c['name'] + '</option>');
                 }
                 if (currentCat) catSelect.val(currentCat);
             }
-            
-            // Render items
             var html = '';
             var items = json['items'] || [];
             currentTotal = json['total'] || 0;
             currentLimit = json['limit'] || 50;
             currentOffset = json['offset'] || 0;
-            
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
                 var isImported = item['status'] === 'Imported';
                 var statusClass = isImported ? 'text-success' : 'text-primary';
-                
                 html += '<tr>';
-                html += '<td>' + (item['image'] ? '<img src=\"' + item['image'] + '\" style=\"max-width:50px;max-height:50px\"/>' : '') + '</td>';
+                html += '<td>' + (item['image'] ? '<img src="' + item['image'] + '" style="max-width:50px;max-height:50px"/>' : '') + '</td>';
                 html += '<td>' + item['title'] + '</td>';
                 html += '<td>' + item['price'] + '</td>';
                 html += '<td>' + item['condition'] + '</td>';
-                html += '<td class=\"' + statusClass + '\">' + item['status'] + '</td>';
-                
+                html += '<td class="' + statusClass + '">' + item['status'] + '</td>';
                 if (isImported) {
-                    html += '<td><a href=\"index.php?route=catalog/product.form&user_token={{ user_token }}&product_id=' + item['product_id'] + '\" class=\"btn btn-sm btn-info\">View</a></td>';
+                    html += '<td><a href="index.php?route=catalog/product.form&user_token={{ user_token }}&product_id=' + item['product_id'] + '" class="btn btn-sm btn-info">View</a></td>';
                 } else {
-                    html += '<td><button class=\"btn btn-sm btn-success import-btn\" data-id=\"' + item['id'] + '\"><i class=\"fa fa-download\"></i> Import</button></td>';
+                    html += '<td><button class="btn btn-sm btn-success import-btn" data-id="' + item['id'] + '"><i class="fa fa-download"></i> Import</button></td>';
                 }
                 html += '</tr>';
             }
-            
             if (items.length === 0) {
-                html = '<tr><td colspan=\"6\" class=\"text-center py-3\">No items found. Try a different keyword.</td></tr>';
+                html = '<tr><td colspan="6" class="text-center py-3">No items found</td></tr>';
             }
-            
             $('#items-table-body').html(html);
             $('#result-count').text(currentTotal);
-            
             var start = currentOffset + 1;
             var end = Math.min(currentOffset + items.length, currentTotal);
             $('#result-range').text('(showing ' + start + '-' + end + ')');
-            
-            // Pagination
             var totalPages = Math.ceil(currentTotal / currentLimit);
             if (totalPages > 1) {
                 $('#pagination-controls').show();
                 $('#pagination-footer').show().html(
-                    '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"goPage(\\'first\\')\">&laquo;&laquo; First</button> ' +
-                    '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"goPage(\\'prev\\')\">&laquo; Prev</button> ' +
-                    '<span class=\"mx-3\">Page ' + (Math.floor(currentOffset / currentLimit) + 1) + ' of ' + totalPages + '</span> ' +
-                    '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"goPage(\\'next\\')\">Next &raquo;</button> ' +
-                    '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"goPage(\\'last\\')\">Last &raquo;&raquo;</button>'
+                    '<button class="btn btn-sm btn-outline-primary" onclick="return goPage(\'first\')">&laquo;&laquo; First</button> ' +
+                    '<button class="btn btn-sm btn-outline-primary" onclick="return goPage(\'prev\')">&laquo; Prev</button> ' +
+                    '<span class="mx-3">Page ' + (Math.floor(currentOffset / currentLimit) + 1) + ' of ' + totalPages + '</span> ' +
+                    '<button class="btn btn-sm btn-outline-primary" onclick="return goPage(\'next\')">Next &raquo;</button> ' +
+                    '<button class="btn btn-sm btn-outline-primary" onclick="return goPage(\'last\')">Last &raquo;&raquo;</button>'
                 );
             } else {
                 $('#pagination-controls').hide();
                 $('#pagination-footer').hide();
             }
-            
             $('#results').show();
         },
-        error: function() {
+        error: function(jqXHR) {
             $('#loading').hide();
-            $('#error-message').html('Request failed').show();
+            $('#error-message').html('Request failed (HTTP ' + jqXHR.status + ')').show();
         }
     });
 }
@@ -201,14 +187,13 @@ function goPage(dir) {
     else if (dir === 'prev') newOffset = Math.max(0, currentOffset - currentLimit);
     else if (dir === 'next') newOffset = currentOffset + currentLimit;
     else if (dir === 'last') newOffset = Math.max(0, Math.floor((currentTotal - 1) / currentLimit) * currentLimit);
-    
-    if (newOffset === currentOffset) return;
+    if (newOffset === currentOffset) return false;
     $('#input-offset').val(newOffset);
     doSearch();
+    return false;
 }
 
-$('#form-search').on('submit', function(e) {
-    e.preventDefault();
+$(document).on('click', '#button-search', function() {
     $('#input-offset').val(0);
     doSearch();
 });
@@ -217,12 +202,10 @@ $('select[name=limit]').on('change', function() {
     $('#input-offset').val(0);
 });
 
-// Single import
 $(document).on('click', '.import-btn', function() {
     var btn = $(this);
     var itemId = btn.data('id');
-    btn.html('<span class=\"spinner-border spinner-border-sm\"></span>').prop('disabled', true);
-    
+    btn.html('<span class="spinner-border spinner-border-sm"></span>').prop('disabled', true);
     $.ajax({
         url: 'index.php?route=extension/opencart/module/sync.importItem&user_token={{ user_token }}',
         type: 'post',
@@ -230,21 +213,20 @@ $(document).on('click', '.import-btn', function() {
         dataType: 'json',
         success: function(json) {
             if (json['success']) {
-                btn.html('<i class=\"fa fa-check\"></i> Done').removeClass('btn-success').addClass('btn-info');
+                btn.html('<i class="fa fa-check"></i> Done').removeClass('btn-success').addClass('btn-info');
                 btn.closest('tr').find('td:nth-child(5)').text('Imported').removeClass('text-primary').addClass('text-success');
             } else {
                 alert('Import failed: ' + (json['error'] || 'Unknown error'));
-                btn.html('<i class=\"fa fa-download\"></i> Import').prop('disabled', false);
+                btn.html('<i class="fa fa-download"></i> Import').prop('disabled', false);
             }
         },
         error: function() {
             alert('Request failed');
-            btn.html('<i class=\"fa fa-download\"></i> Import').prop('disabled', false);
+            btn.html('<i class="fa fa-download"></i> Import').prop('disabled', false);
         }
     });
 });
 
-// Auto-search on page load
 $(document).ready(function() {
     $('#input-offset').val(0);
     doSearch();
