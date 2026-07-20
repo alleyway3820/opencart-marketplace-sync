@@ -306,10 +306,10 @@ class EbayApi
      * @param string $keyword Optional specific keyword
      * @return array Results with 'items' array and 'total'
      */
-    public function getAllSellerItems(string $sellerUsername, int $limit = 200, string $keyword = ''): array
+    public function getAllSellerItems(string $sellerUsername, int $limit = 200, string $keyword = '', string $categoryId = ''): array
     {
         if (!empty($keyword)) {
-            return $this->getSellerListings($sellerUsername, $limit, '', $keyword, '');
+            return $this->getSellerListings($sellerUsername, $limit, '', $keyword, $categoryId);
         }
 
         $commonTerms = ['the', 'new', 'for', 'with', 'box', 'black'];
@@ -318,7 +318,7 @@ class EbayApi
 
         foreach ($commonTerms as $term) {
             try {
-                $result = $this->getSellerListings($sellerUsername, $limit, '', $term, '');
+                $result = $this->getSellerListings($sellerUsername, $limit, '', $term, $categoryId);
                 foreach ($result['items'] ?? [] as $item) {
                     $id = $item['itemId'] ?? '';
                     if ($id && !isset($seenIds[$id])) {

@@ -91,7 +91,13 @@ class Sync extends \Opencart\System\Engine\Controller {
             $mapper = new \DataMapper($prodCfg, $prodCfg);
             
             if ($seller) {
-                $results = $api->getAllSellerItems($seller, $limit, $keyword);
+                if ($keyword) {
+                    // Keyword provided: use single search with proper pagination + categories
+                    $results = $api->getSellerListings($seller, $limit, (string)$offset, $keyword, $categoryId);
+                } else {
+                    // No keyword: use multi-term aggregate (no pagination)
+                    $results = $api->getAllSellerItems($seller, $limit, '', $categoryId);
+                }
             } else {
                 $results = $api->searchItems($keyword, $limit, $offset);
             }

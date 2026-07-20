@@ -159,7 +159,8 @@ function doSearch() {
             var end = Math.min(currentOffset + items.length, currentTotal);
             $('#result-range').text('(showing ' + start + '-' + end + ')');
             var totalPages = Math.ceil(currentTotal / currentLimit);
-            if (totalPages > 1) {
+            var hasKeyword = $('#form-search input[name=keyword]').val().trim().length > 0;
+            if (totalPages > 1 && hasKeyword) {
                 $('#pagination-controls').show();
                 $('#pagination-footer').show().html(
                     '<button class="btn btn-sm btn-outline-primary" onclick="return goPage(\'first\')">&laquo;&laquo; First</button> ' +
