@@ -54,24 +54,30 @@
     
     <div id="results" class="mt-3" style="display:none">
       <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div>
             <strong id="result-count">0</strong> items found
             <span id="result-range" class="text-muted ms-2"></span>
           </div>
-          <nav id="pagination-controls" style="display:none">
-            <ul class="pagination pagination-sm mb-0">
-              <li class="page-item" id="prev-page"><a class="page-link" href="#" onclick="return goPage('prev')">&laquo; Prev</a></li>
-              <li class="page-item disabled"><a class="page-link" id="page-info" href="#">Page 1 of 1</a></li>
-              <li class="page-item" id="next-page"><a class="page-link" href="#" onclick="return goPage('next')">Next &raquo;</a></li>
-            </ul>
-          </nav>
+          <div class="d-flex gap-2 align-items-center">
+            <button type="button" class="btn btn-success btn-sm" id="button-import-selected" style="display:none">
+              <i class="fa fa-download"></i> Import Selected
+            </button>
+            <nav id="pagination-controls" style="display:none">
+              <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" id="prev-page"><a class="page-link" href="#" onclick="return goPage('prev')">&laquo; Prev</a></li>
+                <li class="page-item disabled"><a class="page-link" id="page-info" href="#">Page 1 of 1</a></li>
+                <li class="page-item" id="next-page"><a class="page-link" href="#" onclick="return goPage('next')">Next &raquo;</a></li>
+              </ul>
+            </nav>
+          </div>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-striped mb-0">
               <thead>
                 <tr>
+                  <th style="width:40px"><input type="checkbox" id="select-all"/></th>
                   <th style="width:60px">Image</th>
                   <th>Title</th>
                   <th>Price</th>
@@ -94,6 +100,20 @@
     </div>
     
     <div id="error-message" class="alert alert-danger mt-3" style="display:none"></div>
+
+    <!-- Import History -->
+    <div class="card mt-3">
+      <div class="card-header"><i class="fa fa-history"></i> Import History</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <tbody id="history-body">
+              <tr><td class="text-center py-2 text-muted">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -101,6 +121,21 @@
 var currentOffset = 0;
 var currentTotal = 0;
 var currentLimit = 50;
+
+function loadHistory() {
+    $.get('index.php?route=extension/opencart/module/sync.history&user_token={{ user_token }}', function(json) {
+        var html = '';
+        if (json && json.length) {
+            for (var i = 0; i < json.length; i++) {
+                var h = json[i];
+                html += '<tr><td class="text-nowrap small">' + h.created_at + '</td><td><span class="badge bg-' + (h.action === 'imported' ? 'success' : 'info') + '">' + h.action + '</span></td><td>' + h.title + '</td><td><a href="index.php?route=catalog/product.form&user_token={{ user_token }}&product_id=' + h.product_id + '">#' + h.product_id + '</a></td></tr>';
+            }
+        } else {
+            html = '<tr><td class="text-center py-2 text-muted">No imports yet</td></tr>';
+        }
+        $('#history-body').html(html);
+    });
+}
 
 function doSearch() {
     $('#loading').show();
@@ -133,11 +168,14 @@ function doSearch() {
             currentTotal = json['total'] || 0;
             currentLimit = json['limit'] || 50;
             currentOffset = json['offset'] || 0;
+            var hasAvailable = false;
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
                 var isImported = item['status'] === 'Imported';
                 var statusClass = isImported ? 'text-success' : 'text-primary';
+                if (!isImported) hasAvailable = true;
                 html += '<tr>';
+                html += '<td><input type="checkbox" class="item-check" value="' + item['id'] + '"' + (isImported ? ' disabled' : '') + '/></td>';
                 html += '<td>' + (item['image'] ? '<img src="' + item['image'] + '" style="max-width:50px;max-height:50px"/>' : '') + '</td>';
                 html += '<td>' + item['title'] + '</td>';
                 html += '<td>' + item['price'] + '</td>';
@@ -151,7 +189,7 @@ function doSearch() {
                 html += '</tr>';
             }
             if (items.length === 0) {
-                html = '<tr><td colspan="6" class="text-center py-3">No items found</td></tr>';
+                html = '<tr><td colspan="7" class="text-center py-3">No items found</td></tr>';
             }
             $('#items-table-body').html(html);
             $('#result-count').text(currentTotal);
@@ -159,21 +197,23 @@ function doSearch() {
             var end = Math.min(currentOffset + items.length, currentTotal);
             $('#result-range').text('(showing ' + start + '-' + end + ')');
             var totalPages = Math.ceil(currentTotal / currentLimit);
-            var hasKeyword = $('#form-search input[name=keyword]').val().trim().length > 0;
             if (totalPages > 1) {
                 $('#pagination-controls').show();
                 $('#pagination-footer').show().html(
-                    '<button class="btn btn-sm btn-outline-primary" onclick="return goPage(\'first\')">&laquo;&laquo; First</button> ' +
-                    '<button class="btn btn-sm btn-outline-primary" onclick="return goPage(\'prev\')">&laquo; Prev</button> ' +
-                    '<span class="mx-3">Page ' + (Math.floor(currentOffset / currentLimit) + 1) + ' of ' + totalPages + '</span> ' +
-                    '<button class="btn btn-sm btn-outline-primary" onclick="return goPage(\'next\')">Next &raquo;</button> ' +
-                    '<button class="btn btn-sm btn-outline-primary" onclick="return goPage(\'last\')">Last &raquo;&raquo;</button>'
+                    '<div class="btn-group btn-group-sm">' +
+                    '<button class="btn btn-outline-primary" onclick="return goPage(\'first\')">&laquo;&laquo; First</button>' +
+                    '<button class="btn btn-outline-primary" onclick="return goPage(\'prev\')">&laquo; Prev</button>' +
+                    '<button class="btn btn-outline-primary disabled">Page ' + (Math.floor(currentOffset / currentLimit) + 1) + ' of ' + totalPages + '</button>' +
+                    '<button class="btn btn-outline-primary" onclick="return goPage(\'next\')">Next &raquo;</button>' +
+                    '<button class="btn btn-outline-primary" onclick="return goPage(\'last\')">Last &raquo;&raquo;</button></div>'
                 );
             } else {
                 $('#pagination-controls').hide();
                 $('#pagination-footer').hide();
             }
+            $('#button-import-selected').toggle(hasAvailable);
             $('#results').show();
+            loadHistory();
         },
         error: function(jqXHR) {
             $('#loading').hide();
@@ -203,6 +243,12 @@ $('select[name=limit]').on('change', function() {
     $('#input-offset').val(0);
 });
 
+// Select all toggle
+$(document).on('change', '#select-all', function() {
+    $('.item-check:not(:disabled)').prop('checked', $(this).prop('checked'));
+});
+
+// Import single
 $(document).on('click', '.import-btn', function() {
     var btn = $(this);
     var itemId = btn.data('id');
@@ -215,7 +261,9 @@ $(document).on('click', '.import-btn', function() {
         success: function(json) {
             if (json['success']) {
                 btn.html('<i class="fa fa-check"></i> Done').removeClass('btn-success').addClass('btn-info');
-                btn.closest('tr').find('td:nth-child(5)').text('Imported').removeClass('text-primary').addClass('text-success');
+                btn.closest('tr').find('td:nth-child(6)').text('Imported').removeClass('text-primary').addClass('text-success');
+                btn.closest('tr').find('.item-check').prop('disabled', true).prop('checked', false);
+                loadHistory();
             } else {
                 alert('Import failed: ' + (json['error'] || 'Unknown error'));
                 btn.html('<i class="fa fa-download"></i> Import').prop('disabled', false);
@@ -228,9 +276,36 @@ $(document).on('click', '.import-btn', function() {
     });
 });
 
+// Bulk import
+$(document).on('click', '#button-import-selected', function() {
+    var ids = [];
+    $('.item-check:checked').each(function() { ids.push($(this).val()); });
+    if (!ids.length) { alert('Select items to import'); return; }
+    var btn = $(this).html('<span class="spinner-border spinner-border-sm"></span> Importing...').prop('disabled', true);
+    var imported = 0, failed = 0;
+    function importNext(idx) {
+        if (idx >= ids.length) {
+            btn.html('<i class="fa fa-download"></i> Import Selected').prop('disabled', false);
+            alert('Done: ' + imported + ' imported, ' + failed + ' failed');
+            doSearch();
+            return;
+        }
+        $.ajax({
+            url: 'index.php?route=extension/opencart/module/sync.importItem&user_token={{ user_token }}',
+            type: 'post',
+            data: { item_id: ids[idx] },
+            dataType: 'json',
+            success: function(j) { if (j['success']) imported++; else failed++; importNext(idx + 1); },
+            error: function() { failed++; importNext(idx + 1); }
+        });
+    }
+    importNext(0);
+});
+
 $(document).ready(function() {
     $('#input-offset').val(0);
     doSearch();
+    loadHistory();
 });
 </script>
 {{ footer }}

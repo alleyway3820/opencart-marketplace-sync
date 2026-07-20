@@ -227,4 +227,22 @@ class Sync extends \Opencart\System\Engine\Controller {
         $this->response->addHeader('Content-Type: application/json');
         $this->response->setOutput(json_encode($json));
     }
+
+    public function history(): void {
+        $json = [];
+        try {
+            $pdo = new \PDO("mysql:host=localhost;dbname=geek_shop;charset=utf8mb4", "geek_shop", "jqqeO-C1kna^4Go0");
+            foreach ($pdo->query("SELECT * FROM oc_sync_history ORDER BY sync_id DESC LIMIT 20") as $r) {
+                $json[] = [
+                    'sync_id' => $r['sync_id'],
+                    'product_id' => $r['product_id'],
+                    'title' => $r['title'],
+                    'action' => $r['action'],
+                    'created_at' => $r['created_at'],
+                ];
+            }
+        } catch (\Throwable $e) {}
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
 }
