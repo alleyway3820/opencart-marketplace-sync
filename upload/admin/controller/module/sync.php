@@ -124,6 +124,11 @@ class Sync extends \Opencart\System\Engine\Controller {
                     $ebayItemId = 'v1|' . $itemId . '|0';
                 }
                 $imported = $ocDb->getProductBySku($ebayItemId);
+                if (!$imported) {
+                    $hs = $pdo->prepare("SELECT product_id FROM oc_sync_history WHERE ebay_item_id = ? LIMIT 1");
+                    $hs->execute([$ebayItemId]);
+                    $imported = $hs->fetchColumn();
+                }
                 $items[] = [
                     'id' => $ebayItemId,
                     'title' => $item['title'] ?? 'Unknown',
@@ -194,7 +199,6 @@ class Sync extends \Opencart\System\Engine\Controller {
             }
             
             if ($existingId) {
-                // Already imported — update and return
                 $json['success'] = true;
                 $json['product_id'] = (int)$existingId;
                 $json['note'] = 'already_imported';
@@ -204,6 +208,8 @@ class Sync extends \Opencart\System\Engine\Controller {
             }
             
             $productData = $mapper->mapToProduct($itemData);
+            // Ensure SKU is set from the eBay item ID for duplicate detection
+            $productData['sku'] = $itemId;
             $catName = $mapper->resolveCategory($itemData['title'] ?? '');
             $catId = $ocDb->ensureCategory($catName, $prodCfg['default_category_id'] ?? 20);
             $productData['category_id'] = $catId;
