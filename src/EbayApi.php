@@ -244,8 +244,12 @@ class EbayApi
     {
         $this->authenticate();
         
+        // When no keyword is provided, use 'a' as the broadest search term
+        // to return the largest number of the seller's items
+        $searchTerm = $keyword ?: 'a';
+        
         $params = [
-            'q' => $keyword ?: $sellerUsername,
+            'q' => $searchTerm,
             'limit' => min($limit, 200),
             'filter' => 'sellers:{' . $sellerUsername . '}',
         ];

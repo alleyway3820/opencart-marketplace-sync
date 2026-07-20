@@ -90,7 +90,8 @@ class Sync extends \Opencart\System\Engine\Controller {
             if ($seller && $keyword) {
                 $results = $api->getSellerListings($seller, 50, '', $keyword);
             } elseif ($seller) {
-                $results = $api->getSellerListings($seller, 50, '', $seller);
+                // No keyword? Let API use its broad default ('a')
+                $results = $api->getSellerListings($seller, 200, '', '');
             } else {
                 $results = $api->searchItems($keyword, 50);
             }
