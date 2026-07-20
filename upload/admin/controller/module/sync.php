@@ -54,6 +54,7 @@ class Sync extends \Opencart\System\Engine\Controller {
     }
 
     public function search(): void {
+        ob_start();
         $json = ['error' => '', 'items' => [], 'categories' => [], 'total' => 0];
         
         $seller = trim($this->request->post['seller'] ?? '');
@@ -111,7 +112,11 @@ class Sync extends \Opencart\System\Engine\Controller {
             foreach ($results['items'] ?? [] as $item) {
                 $itemId = $item['itemId'] ?? '';
                 if (!$itemId) continue;
-                $ebayItemId = 'v1|' . $itemId . '|0';
+                $ebayItemId = $itemId;
+                // eBay Browse API returns itemId with v1|...|0 format in some cases
+                if (strpos($itemId, 'v1|') !== 0) {
+                    $ebayItemId = 'v1|' . $itemId . '|0';
+                }
                 $imported = $ocDb->getProductBySku($ebayItemId);
                 $items[] = [
                     'id' => $ebayItemId,

@@ -100,10 +100,6 @@ class EbayApi
         $this->accessToken = $data['access_token'];
         $this->config['token_expiry'] = time() + ($data['expires_in'] ?? 7200);
 
-        // Log so we can save updated token
-        error_log('EBAY_ACCESS_TOKEN=' . $this->accessToken);
-        error_log('EBAY_TOKEN_EXPIRY=' . $this->config['token_expiry']);
-
         return $this->accessToken;
     }
 
