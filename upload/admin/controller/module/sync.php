@@ -195,12 +195,20 @@ class Sync extends \Opencart\System\Engine\Controller {
                 if ($localImage) $productData['image'] = $localImage;
             }
             
+            $existingId = $ocDb->getProductBySku($productData['sku'] ?? $itemId);
+            
             if ($existingId) {
                 $ocDb->updateProduct($existingId, $productData);
                 $productId = $existingId;
+                $action = 'updated';
             } else {
                 $productId = $ocDb->createProduct($productData, $catId);
+                $action = 'imported';
             }
+            
+            // Log to sync_history for audit trail
+            $pdo->prepare("INSERT INTO oc_sync_history (ebay_item_id, product_id, title, price, action) VALUES (?, ?, ?, ?, ?)")
+                ->execute([$itemId, $productId, $itemData['title'] ?? 'Unknown', $itemData['price']['value'] ?? '0.00', $action]);
             
             foreach ($itemData['additionalImages'] ?? [] as $i => $img) {
                 if (!empty($img['imageUrl'])) {

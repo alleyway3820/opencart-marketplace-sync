@@ -160,7 +160,7 @@ function doSearch() {
             $('#result-range').text('(showing ' + start + '-' + end + ')');
             var totalPages = Math.ceil(currentTotal / currentLimit);
             var hasKeyword = $('#form-search input[name=keyword]').val().trim().length > 0;
-            if (totalPages > 1 && hasKeyword) {
+            if (totalPages > 1) {
                 $('#pagination-controls').show();
                 $('#pagination-footer').show().html(
                     '<button class="btn btn-sm btn-outline-primary" onclick="return goPage(\'first\')">&laquo;&laquo; First</button> ' +
