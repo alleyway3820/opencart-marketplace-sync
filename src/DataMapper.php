@@ -27,7 +27,12 @@ class DataMapper
         $description = $this->buildDescription($ebayItem);
 
         $categoryId = $this->resolveCategoryId($ebayItem['category_id'] ?? '', $ebayItem['category_name'] ?? '');
-        $price = $this->formatPrice($ebayItem['price'] ?? '0.00');
+        $price = $ebayItem['price'] ?? '0.00';
+        // Price can be string (search results) or array (getItem response: {value, currency})
+        if (is_array($price)) {
+            $price = $price['value'] ?? '0.00';
+        }
+        $price = $this->formatPrice($price);
         $quantity = max(0, (int)($ebayItem['quantity'] ?? 1));
 
         return [

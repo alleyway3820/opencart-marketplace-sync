@@ -184,7 +184,15 @@ class Sync extends \Opencart\System\Engine\Controller {
             $catId = $ocDb->ensureCategory($catName, $prodCfg['default_category_id'] ?? 20);
             $productData['category_id'] = $catId;
             
-            $existingId = $ocDb->findBySku($productData['sku'] ?? $itemId);
+            $existingId = $ocDb->getProductBySku($productData['sku'] ?? $itemId);
+            
+            // Download main image
+            if (!empty($itemData['image']['imageUrl'])) {
+                $localImage = $images->downloadImage($itemData['image']['imageUrl'], $itemId, 0);
+                if ($localImage) {
+                    $productData['image'] = $localImage;
+                }
+            }
             
             if ($existingId) {
                 $ocDb->updateProduct($existingId, $productData);
@@ -193,9 +201,14 @@ class Sync extends \Opencart\System\Engine\Controller {
                 $productId = $ocDb->createProduct($productData, $catId);
             }
             
-            $itemImages = $itemData['images'] ?? [];
-            if ($itemImages) {
-                $ocDb->updateProductImages($productId, $itemImages, $itemData['image'] ?? '');
+            // Download and attach additional images
+            foreach ($itemData['additionalImages'] ?? [] as $i => $img) {
+                if (!empty($img['imageUrl'])) {
+                    $localPath = $images->downloadImage($img['imageUrl'], $itemId, $i + 1);
+                    if ($localPath) {
+                        $ocDb->createProductImage($productId, $localPath, $i + 1);
+                    }
+                }
             }
             
             $json['success'] = true;
