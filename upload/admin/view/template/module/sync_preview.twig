@@ -18,7 +18,7 @@
     <div class="card">
       <div class="card-header"><i class="fa fa-search"></i> Browse eBay Store</div>
       <div class="card-body">
-        <form id="form-search" class="row g-3">
+        <form id="form-search" class="row g-3" action="javascript:void(0)">
           <div class="col-md-3">
             <label class="form-label">{{ text_seller }}</label>
             <input type="text" name="seller" value="ageek4less" class="form-control" placeholder="eBay seller"/>
@@ -43,7 +43,7 @@
             </select>
           </div>
           <div class="col-md-2 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100" id="button-search">
+            <button type="button" class="btn btn-primary w-100" id="button-search">
               <i class="fa fa-search"></i> Search
             </button>
           </div>
