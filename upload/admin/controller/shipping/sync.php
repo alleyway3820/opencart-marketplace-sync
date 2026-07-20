@@ -86,8 +86,14 @@ class Sync extends \Opencart\System\Engine\Controller {
             $prodCfg = $syncConfig['products'] ?? [];
             $mapper = new \DataMapper($prodCfg, $prodCfg);
             
-            $searchTerm = $keyword ?: $seller;
-            $results = $api->searchItems($searchTerm, 50);
+            // Use seller filter if seller name provided, otherwise plain search
+            if ($seller && $keyword) {
+                $results = $api->getSellerListings($seller, 50, '', $keyword);
+            } elseif ($seller) {
+                $results = $api->getSellerListings($seller, 50, '', $seller);
+            } else {
+                $results = $api->searchItems($keyword, 50);
+            }
             
             $items = [];
             foreach ($results['items'] ?? [] as $item) {
