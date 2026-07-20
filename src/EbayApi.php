@@ -240,12 +240,11 @@ class EbayApi
       * @param string $offset Pagination offset
       * @return array Results with 'items' array and 'total'
       */
-    public function getSellerListings(string $sellerUsername, int $limit = 200, string $offset = '', string $keyword = '', string $categoryId = '', string $fallbackKeyword = 'dvd'): array
+    public function getSellerListings(string $sellerUsername, int $limit = 200, string $offset = '', string $keyword = '', string $categoryId = ''): array
     {
         $this->authenticate();
         
-        // eBay Browse API requires a search term. When blank, use fallback.
-        $searchTerm = $keyword ?: $fallbackKeyword;
+        $searchTerm = $keyword ?: $sellerUsername;
         
         $params = [
             'q' => $searchTerm,
@@ -299,6 +298,49 @@ class EbayApi
             'items' => $data['itemSummaries'] ?? [],
             'total' => $data['total'] ?? 0,
             'next'  => $data['next'] ?? '',
+        ];
+    }
+
+    /**
+     * Get all items from a seller by trying multiple common keywords and deduplicating.
+     * This works universally regardless of what the seller sells.
+     *
+     * @param string $sellerUsername eBay seller username
+     * @param int $limit Max results total (across all keyword searches)
+     * @param string $keyword Optional specific keyword
+     * @return array Results with 'items' array and 'total'
+     */
+    public function getAllSellerItems(string $sellerUsername, int $limit = 200, string $keyword = ''): array
+    {
+        if (!empty($keyword)) {
+            return $this->getSellerListings($sellerUsername, $limit, '', $keyword, '');
+        }
+
+        $commonTerms = ['the', 'new', 'for', 'with', 'box', 'black'];
+        $allItems = [];
+        $seenIds = [];
+
+        foreach ($commonTerms as $term) {
+            try {
+                $result = $this->getSellerListings($sellerUsername, $limit, '', $term, '');
+                foreach ($result['items'] ?? [] as $item) {
+                    $id = $item['itemId'] ?? '';
+                    if ($id && !isset($seenIds[$id])) {
+                        $seenIds[$id] = true;
+                        $allItems[] = $item;
+                        if (count($allItems) >= $limit) {
+                            break 2;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+
+        return [
+            'items' => $allItems,
+            'total' => count($allItems),
         ];
     }
 

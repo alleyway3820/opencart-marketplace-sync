@@ -90,8 +90,7 @@ class Sync extends \Opencart\System\Engine\Controller {
             $mapper = new \DataMapper($prodCfg, $prodCfg);
             
             if ($seller) {
-                $fallback = $syncConfig['sync']['fallback_keyword'] ?? 'dvd';
-                $results = $api->getSellerListings($seller, $limit, $offset, $keyword, $categoryId, $fallback);
+                $results = $api->getAllSellerItems($seller, $limit, $keyword);
             } else {
                 $results = $api->searchItems($keyword, $limit, $offset);
             }
