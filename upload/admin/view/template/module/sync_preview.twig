@@ -262,6 +262,7 @@ $(document).on('click', '.import-btn', function() {
             if (json['success']) {
                 if (json['note'] === 'already_imported') {
                     btn.html('<i class="fa fa-check"></i> Already imported').removeClass('btn-success').addClass('btn-warning');
+                    alert('Already imported (Product #' + json['product_id'] + ')');
                 } else {
                     btn.html('<i class="fa fa-check"></i> Done').removeClass('btn-success').addClass('btn-info');
                 }
