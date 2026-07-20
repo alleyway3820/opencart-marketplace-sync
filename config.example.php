@@ -3,6 +3,13 @@
  * Configuration Example for OpenCart Marketplace Sync
  *
  * Copy this file to config.php and fill in your actual credentials.
+ *
+ * === SEARCH BEHAVIOR ===
+ * The admin GUI search has TWO modes:
+ * 1. Seller-scoped: Enter BOTH seller username + keyword -> only that seller's items
+ * 2. Open marketplace: Enter ONLY keyword -> shows matches from ALL eBay sellers
+ * Mode 2 lets you find products to resell from other sellers.
+ * To disable it, update the sync controller search() method.
  */
 return [
     'opencart' => [
