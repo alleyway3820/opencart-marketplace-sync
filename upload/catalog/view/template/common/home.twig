@@ -1,0 +1,70 @@
+{{ header }}
+
+<!-- Hero -->
+<div style="display:grid;grid-template-columns:1.1fr 0.9fr;gap:32px;align-items:center;padding:56px 32px;max-width:1200px;margin:0 auto;background:#f4ecd8;font-family:'Karla',sans-serif;">
+  <div>
+    <div style="display:inline-block;background:#2c4a6e;color:#f4ecd8;font-size:13px;font-weight:700;letter-spacing:1px;padding:6px 14px;border-radius:999px;margin-bottom:16px;">★★★ THIRD-GENERATION TINKERER ★★★</div>
+    <h1 style="font-family:'Passion One',sans-serif;font-size:56px;line-height:1.02;margin:0 0 16px;color:#3d2a1a;">Your vacuum's<br/>broken part is<br/>somebody's<br/><span style="color:#a52c3c;">treasure.</span></h1>
+    <p style="font-size:17px;line-height:1.6;color:#5c4830;max-width:440px;margin:0 0 24px;">Belts, filters, hoses, brush rolls and motors pulled, cleaned, and bench-tested by one very caffeinated Texas geek. If it spins, sucks, or sweeps, we've probably got the part.</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;">
+      <a href="index.php?route=product/category&path=25" style="background:#3d2a1a;color:#f4ecd8;text-decoration:none;font-weight:700;padding:14px 26px;border-radius:10px;font-size:15px;">Shop Parts</a>
+      <a href="https://www.ebay.com/str/geekygoodygoods" style="color:#3d2a1a;text-decoration:underline;font-weight:700;padding:14px 6px;font-size:15px;">Also on eBay ↗</a>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:center;">
+    <img src="image/04230bb9-a0a2-4a7a-8ecc-5d76bce4c1ac.png" style="width:100%;max-width:360px;border-radius:20px;" alt="Geeky mechanic mascot" />
+  </div>
+</div>
+
+<!-- Trust bar -->
+<div style="background:#3d2a1a;padding:20px 32px;font-family:'Karla',sans-serif;">
+  <div style="max-width:1200px;margin:0 auto;display:flex;gap:32px;flex-wrap:wrap;justify-content:center;color:#f2e8d1;font-size:14px;font-weight:700;">
+    <div style="display:flex;align-items:center;gap:8px;"><img src="image/3c3ebbc7-f366-4d0c-8ae8-8f6695b2fba3.png" style="width:26px;height:26px;object-fit:contain;" alt="badge"/> Ships from Texas, usually next business day</div>
+    <div style="display:flex;align-items:center;gap:8px;">✅ Tested before it ships — no surprise duds</div>
+    <div style="display:flex;align-items:center;gap:8px;">↩️ 30-day returns, no cap-gun questions asked</div>
+  </div>
+</div>
+
+<!-- Products section -->
+<div id="shop" style="max-width:1200px;margin:0 auto;padding:48px 32px;font-family:'Karla',sans-serif;">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+    <h2 style="font-family:'Passion One',sans-serif;font-size:34px;margin:0;color:#3d2a1a;">Shop the shelf</h2>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px;">
+    <a href="index.php?route=product/category&path=25" style="padding:9px 18px;border-radius:999px;border:2px solid #3d2a1a;font-weight:700;font-size:13px;background:#3d2a1a;color:#f4ecd8;text-decoration:none;">All Parts</a>
+    <a href="index.php?route=product/category&path=60" style="padding:9px 18px;border-radius:999px;border:2px solid #3d2a1a;font-weight:700;font-size:13px;background:#fff;color:#3d2a1a;text-decoration:none;">Music</a>
+    <a href="index.php?route=product/category&path=34" style="padding:9px 18px;border-radius:999px;border:2px solid #3d2a1a;font-weight:700;font-size:13px;background:#fff;color:#3d2a1a;text-decoration:none;">Electronics</a>
+    <a href="index.php?route=product/category&path=18" style="padding:9px 18px;border-radius:999px;border:2px solid #3d2a1a;font-weight:700;font-size:13px;background:#fff;color:#3d2a1a;text-decoration:none;">Laptops</a>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:22px;">
+    {% if products %}
+      {% for product in products[:8] %}
+        <div style="background:#fff;border:2px solid #3d2a1a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="height:150px;background:#eee1c6;display:flex;align-items:center;justify-content:center;">
+            {% if product.thumb %}<img src="{{ product.thumb }}" style="max-width:100%;max-height:100%;object-fit:contain;" alt="{{ product.name }}">{% endif %}
+          </div>
+          <div style="padding:14px;display:flex;flex-direction:column;gap:6px;flex:1;">
+            <div style="font-size:14px;font-weight:700;color:#3d2a1a;line-height:1.3;">{{ product.name }}</div>
+            <div style="font-size:12px;color:#8a7455;">Used - Tested</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:8px;">
+              <span style="font-size:18px;font-weight:900;color:#a52c3c;font-family:'Passion One',sans-serif;">${{ product.price }}</span>
+              <a href="{{ product.href }}" style="background:#3d2a1a;color:#f4ecd8;text-decoration:none;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;display:inline-block;">View</a>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div style="text-align:center;padding:60px 20px;color:#8a7455;font-size:15px;grid-column:1/-1;">No products yet — check back soon!</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Newsletter -->
+<div style="background:#2c4a6e;color:#f4ecd8;padding:48px 32px;font-family:'Karla',sans-serif;">
+  <div style="max-width:600px;margin:0 auto;text-align:center;">
+    <h2 style="font-family:'Passion One',sans-serif;font-size:30px;margin:0 0 8px;">Follow the workbench</h2>
+    <p style="font-size:15px;margin:0 0 20px;color:#dce6ee;">New teardown finds and restock alerts, straight from the shop in Texas. No spam, just parts.</p>
+  </div>
+</div>
+
+{{ footer }}

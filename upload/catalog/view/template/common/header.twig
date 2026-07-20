@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html dir="{{ direction }}" lang="{{ language }}">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>{{ title }}</title>
+<base href="{{ base }}"/>
+{% if description %}<meta name="description" content="{{ description }}"/>{% endif %}
+{% if keywords %}<meta name="keywords" content="{{ keywords }}"/>{% endif %}
+<link href="catalog/view/stylesheet/bootstrap.css" type="text/css" rel="stylesheet" media="screen"/>
+<link href="catalog/view/stylesheet/fonts/fontawesome/css/all.min.css" type="text/css" rel="stylesheet"/>
+<link href="catalog/view/stylesheet/stylesheet.css" type="text/css" rel="stylesheet"/>
+{% for style in styles %}
+<link href="{{ style.href }}" type="text/css" rel="{{ style.rel }}" media="{{ style.media }}"/>
+{% endfor %}
+{% for script in scripts %}
+<script src="{{ script }}" type="text/javascript"></script>
+{% endfor %}
+{% for link in links %}<link href="{{ link.href }}" rel="{{ link.rel }}"/>{% endfor %}
+{% for analytic in analytics %}{{ analytic }}{% endfor %}
+</head>
+<body>
+<div id="alert" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+<!-- Skip the old OC4 nav, use our custom brown theme layout for most pages -->
+<!-- Top bar -->
+<div style="background:#3d2a1a;color:#f2e8d1;font-size:13px;font-weight:700;letter-spacing:0.5px;text-align:center;padding:8px 16px;font-family:'Karla',sans-serif;">
+  🤠 SHIPS FROM TEXAS &nbsp;•&nbsp; Free shipping on orders $35+ &nbsp;•&nbsp; Used &amp; refurbished parts, tested before they leave the shop
+</div>
+
+<!-- Sticky header -->
+<header style="display:flex;align-items:center;justify-content:space-between;gap:24px;padding:12px 32px;background:#f4ecd8;border-bottom:3px solid #3d2a1a;position:sticky;top:0;z-index:20;flex-wrap:wrap;font-family:'Karla',sans-serif;">
+  <a href="{{ home }}" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+    <img src="image/c43faac9-bd38-42d9-aabc-efc97af67905.png" style="width:44px;height:44px;object-fit:contain;" alt="Geeky Goods logo"/>
+    <div>
+      <div style="font-family:'Passion One',sans-serif;font-size:22px;font-weight:900;line-height:1;color:#3d2a1a;">GEEKYGOODYGOODS</div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#a52c3c;">VACUUM &amp; APPLIANCE PARTS</div>
+    </div>
+  </a>
+  <div style="display:flex;gap:12px;align-items:center;">
+    <a href="{{ wishlist }}" id="wishlist-total" style="font-size:14px;color:#3d2a1a;text-decoration:none;"><i class="fa-regular fa-heart"></i></a>
+    <a href="{{ shopping_cart }}" style="display:flex;align-items:center;gap:6px;background:#a52c3c;color:#f4ecd8;border:none;border-radius:999px;padding:8px 18px;font-weight:700;font-size:14px;cursor:pointer;text-decoration:none;">
+      🛒 Cart <span id="header-cart">{{ text_items }}</span>
+    </a>
+  </div>
+</header>
