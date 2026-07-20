@@ -244,11 +244,8 @@ class EbayApi
     {
         $this->authenticate();
         
-        // When no keyword is provided, default to 'dvd' which returns the most items
-        $searchTerm = $keyword ?: 'dvd';
-        
         $params = [
-            'q' => $searchTerm,
+            'q' => $keyword ?: $sellerUsername,
             'limit' => min($limit, 200),
             'filter' => 'sellers:{' . $sellerUsername . '}',
         ];

@@ -21,16 +21,16 @@
         <form id="form-search" class="row g-3">
           <div class="col-md-3">
             <label class="form-label">{{ text_seller }}</label>
-            <input type="text" name="seller" value="ageek4less" class="form-control" placeholder="eBay seller username"/>
+            <input type="text" name="seller" value="ageek4less" class="form-control" placeholder="eBay seller"/>
           </div>
           <div class="col-md-3">
             <label class="form-label">{{ text_keyword }}</label>
-            <input type="text" name="keyword" value="" class="form-control" placeholder="Leave blank to search all"/>
+            <input type="text" name="keyword" value="" class="form-control" placeholder="Enter keyword to search"/>
           </div>
           <div class="col-md-3">
             <label class="form-label">Category</label>
             <select name="category_id" class="form-control" id="category-select">
-              <option value="">-- All Categories --</option>
+              <option value="">-- All --</option>
             </select>
           </div>
           <div class="col-md-1">
@@ -44,7 +44,7 @@
           </div>
           <div class="col-md-2 d-flex align-items-end">
             <button type="submit" class="btn btn-primary w-100" id="button-search">
-              <i class="fa fa-search"></i> {{ text_search_btn }}
+              <i class="fa fa-search"></i> Search
             </button>
           </div>
           <input type="hidden" name="offset" value="0" id="input-offset"/>
@@ -55,12 +55,15 @@
     <div id="results" class="mt-3" style="display:none">
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <span><strong id="result-count">0</strong> items found</span>
+          <div>
+            <strong id="result-count">0</strong> items found
+            <span id="result-range" class="text-muted ms-2"></span>
+          </div>
           <nav id="pagination-controls" style="display:none">
             <ul class="pagination pagination-sm mb-0">
-              <li class="page-item" id="prev-page"><a class="page-link" href="#">&laquo;</a></li>
-              <li class="page-item disabled"><a class="page-link" id="page-info" href="#">Page 1</a></li>
-              <li class="page-item" id="next-page"><a class="page-link" href="#">&raquo;</a></li>
+              <li class="page-item" id="prev-page"><a class="page-link" href="#" onclick="event.preventDefault(); goPage('prev')">&laquo; Prev</a></li>
+              <li class="page-item disabled"><a class="page-link" id="page-info" href="#">Page 1 of 1</a></li>
+              <li class="page-item" id="next-page"><a class="page-link" href="#" onclick="event.preventDefault(); goPage('next')">Next &raquo;</a></li>
             </ul>
           </nav>
         </div>
@@ -81,6 +84,7 @@
             </table>
           </div>
         </div>
+        <div class="card-footer text-center" id="pagination-footer" style="display:none"></div>
       </div>
     </div>
     
@@ -98,12 +102,10 @@ var currentOffset = 0;
 var currentTotal = 0;
 var currentLimit = 50;
 
-function doSearch(offset) {
+function doSearch() {
     $('#loading').show();
     $('#results').hide();
     $('#error-message').hide();
-    $('#input-offset').val(offset);
-    currentOffset = offset;
     
     $.ajax({
         url: 'index.php?route=extension/opencart/shipping/sync.search&user_token={{ user_token }}',
@@ -121,11 +123,11 @@ function doSearch(offset) {
             // Update category dropdown
             var catSelect = $('#category-select');
             var currentCat = catSelect.val();
-            catSelect.find('option[value!=""]').remove();
+            catSelect.find('option[value!=\"\"]').remove();
             if (json['categories']) {
                 for (var k = 0; k < json['categories'].length; k++) {
                     var c = json['categories'][k];
-                    catSelect.append('<option value="' + c['id'] + '">' + c['name'] + '</option>');
+                    catSelect.append('<option value=\"' + c['id'] + '\">' + c['name'] + '</option>');
                 }
                 if (currentCat) catSelect.val(currentCat);
             }
@@ -135,6 +137,7 @@ function doSearch(offset) {
             var items = json['items'] || [];
             currentTotal = json['total'] || 0;
             currentLimit = json['limit'] || 50;
+            currentOffset = json['offset'] || 0;
             
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
@@ -142,37 +145,45 @@ function doSearch(offset) {
                 var statusClass = isImported ? 'text-success' : 'text-primary';
                 
                 html += '<tr>';
-                html += '<td>' + (item['image'] ? '<img src="' + item['image'] + '" style="max-width:50px;max-height:50px"/>' : '') + '</td>';
+                html += '<td>' + (item['image'] ? '<img src=\"' + item['image'] + '\" style=\"max-width:50px;max-height:50px\"/>' : '') + '</td>';
                 html += '<td>' + item['title'] + '</td>';
                 html += '<td>' + item['price'] + '</td>';
                 html += '<td>' + item['condition'] + '</td>';
-                html += '<td class="' + statusClass + '">' + item['status'] + '</td>';
+                html += '<td class=\"' + statusClass + '\">' + item['status'] + '</td>';
                 
                 if (isImported) {
-                    html += '<td><a href="index.php?route=catalog/product.form&user_token={{ user_token }}&product_id=' + item['product_id'] + '" class="btn btn-sm btn-info">View</a></td>';
+                    html += '<td><a href=\"index.php?route=catalog/product.form&user_token={{ user_token }}&product_id=' + item['product_id'] + '\" class=\"btn btn-sm btn-info\">View</a></td>';
                 } else {
-                    html += '<td><button class="btn btn-sm btn-success import-btn" data-id="' + item['id'] + '"><i class="fa fa-download"></i> Import</button></td>';
+                    html += '<td><button class=\"btn btn-sm btn-success import-btn\" data-id=\"' + item['id'] + '\"><i class=\"fa fa-download\"></i> Import</button></td>';
                 }
                 html += '</tr>';
             }
             
             if (items.length === 0) {
-                html = '<tr><td colspan="6" class="text-center py-3">No items found</td></tr>';
+                html = '<tr><td colspan=\"6\" class=\"text-center py-3\">No items found. Try a different keyword.</td></tr>';
             }
             
             $('#items-table-body').html(html);
             $('#result-count').text(currentTotal);
             
+            var start = currentOffset + 1;
+            var end = Math.min(currentOffset + items.length, currentTotal);
+            $('#result-range').text('(showing ' + start + '-' + end + ')');
+            
             // Pagination
             var totalPages = Math.ceil(currentTotal / currentLimit);
             if (totalPages > 1) {
                 $('#pagination-controls').show();
-                var pageNum = Math.floor(currentOffset / currentLimit) + 1;
-                $('#page-info').text('Page ' + pageNum + ' of ' + totalPages);
-                $('#prev-page').toggleClass('disabled', currentOffset <= 0);
-                $('#next-page').toggleClass('disabled', currentOffset + currentLimit >= currentTotal);
+                $('#pagination-footer').show().html(
+                    '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"goPage(\\'first\\')\">&laquo;&laquo; First</button> ' +
+                    '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"goPage(\\'prev\\')\">&laquo; Prev</button> ' +
+                    '<span class=\"mx-3\">Page ' + (Math.floor(currentOffset / currentLimit) + 1) + ' of ' + totalPages + '</span> ' +
+                    '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"goPage(\\'next\\')\">Next &raquo;</button> ' +
+                    '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"goPage(\\'last\\')\">Last &raquo;&raquo;</button>'
+                );
             } else {
                 $('#pagination-controls').hide();
+                $('#pagination-footer').hide();
             }
             
             $('#results').show();
@@ -184,26 +195,33 @@ function doSearch(offset) {
     });
 }
 
+function goPage(dir) {
+    var newOffset = currentOffset;
+    if (dir === 'first') newOffset = 0;
+    else if (dir === 'prev') newOffset = Math.max(0, currentOffset - currentLimit);
+    else if (dir === 'next') newOffset = currentOffset + currentLimit;
+    else if (dir === 'last') newOffset = Math.max(0, Math.floor((currentTotal - 1) / currentLimit) * currentLimit);
+    
+    if (newOffset === currentOffset) return;
+    $('#input-offset').val(newOffset);
+    doSearch();
+}
+
 $('#form-search').on('submit', function(e) {
     e.preventDefault();
-    doSearch(0);
+    $('#input-offset').val(0);
+    doSearch();
 });
 
-$('#prev-page').on('click', function(e) {
-    e.preventDefault();
-    if (currentOffset > 0) doSearch(Math.max(0, currentOffset - currentLimit));
-});
-
-$('#next-page').on('click', function(e) {
-    e.preventDefault();
-    if (currentOffset + currentLimit < currentTotal) doSearch(currentOffset + currentLimit);
+$('select[name=limit]').on('change', function() {
+    $('#input-offset').val(0);
 });
 
 // Single import
 $(document).on('click', '.import-btn', function() {
     var btn = $(this);
     var itemId = btn.data('id');
-    btn.html('<span class="spinner-border spinner-border-sm"></span>').prop('disabled', true);
+    btn.html('<span class=\"spinner-border spinner-border-sm\"></span>').prop('disabled', true);
     
     $.ajax({
         url: 'index.php?route=extension/opencart/shipping/sync.importItem&user_token={{ user_token }}',
@@ -212,18 +230,24 @@ $(document).on('click', '.import-btn', function() {
         dataType: 'json',
         success: function(json) {
             if (json['success']) {
-                btn.html('<i class="fa fa-check"></i> Done').removeClass('btn-success').addClass('btn-info');
+                btn.html('<i class=\"fa fa-check\"></i> Done').removeClass('btn-success').addClass('btn-info');
                 btn.closest('tr').find('td:nth-child(5)').text('Imported').removeClass('text-primary').addClass('text-success');
             } else {
                 alert('Import failed: ' + (json['error'] || 'Unknown error'));
-                btn.html('<i class="fa fa-download"></i> Import').prop('disabled', false);
+                btn.html('<i class=\"fa fa-download\"></i> Import').prop('disabled', false);
             }
         },
         error: function() {
             alert('Request failed');
-            btn.html('<i class="fa fa-download"></i> Import').prop('disabled', false);
+            btn.html('<i class=\"fa fa-download\"></i> Import').prop('disabled', false);
         }
     });
+});
+
+// Auto-search on page load
+$(document).ready(function() {
+    $('#input-offset').val(0);
+    doSearch();
 });
 </script>
 {{ footer }}
