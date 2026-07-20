@@ -54,10 +54,13 @@ class Sync extends \Opencart\System\Engine\Controller {
     }
 
     public function search(): void {
-        $json = ['error' => '', 'items' => []];
+        $json = ['error' => '', 'items' => [], 'categories' => [], 'total' => 0];
         
         $seller = trim($this->request->post['seller'] ?? '');
         $keyword = trim($this->request->post['keyword'] ?? '');
+        $categoryId = trim($this->request->post['category_id'] ?? '');
+        $limit = min(200, max(1, (int)($this->request->post['limit'] ?? 50)));
+        $offset = max(0, (int)($this->request->post['offset'] ?? 0));
         
         if (empty($seller) && empty($keyword)) {
             $json['error'] = $this->language->get('error_search');
@@ -86,14 +89,27 @@ class Sync extends \Opencart\System\Engine\Controller {
             $prodCfg = $syncConfig['products'] ?? [];
             $mapper = new \DataMapper($prodCfg, $prodCfg);
             
-            // Use seller filter if seller name provided, otherwise plain search
-            if ($seller && $keyword) {
-                $results = $api->getSellerListings($seller, 50, '', $keyword);
-            } elseif ($seller) {
-                // No keyword? Let API use its broad default ('a')
-                $results = $api->getSellerListings($seller, 200, '', '');
+            if ($seller) {
+                $results = $api->getSellerListings($seller, $limit, $offset, $keyword, $categoryId);
             } else {
-                $results = $api->searchItems($keyword, 50);
+                $results = $api->searchItems($keyword, $limit, $offset);
+            }
+            
+            // Extract unique categories from results
+            $categories = [];
+            foreach ($results['items'] ?? [] as $item) {
+                foreach ($item['categories'] ?? [] as $cat) {
+                    $id = $cat['categoryId'] ?? '';
+                    $name = $cat['categoryName'] ?? '';
+                    if ($id && $name) {
+                        $categories[$id] = $name;
+                    }
+                }
+            }
+            asort($categories);
+            $catList = [];
+            foreach ($categories as $id => $name) {
+                $catList[] = ['id' => $id, 'name' => $name];
             }
             
             $items = [];
@@ -116,7 +132,10 @@ class Sync extends \Opencart\System\Engine\Controller {
             }
             
             $json['items'] = $items;
+            $json['categories'] = $catList;
             $json['total'] = $results['total'] ?? count($items);
+            $json['limit'] = $limit;
+            $json['offset'] = $offset;
             
         } catch (\Throwable $e) {
             $json['error'] = $e->getMessage();

@@ -240,13 +240,12 @@ class EbayApi
       * @param string $offset Pagination offset
       * @return array Results with 'items' array and 'total'
       */
-    public function getSellerListings(string $sellerUsername, int $limit = 200, string $offset = '', string $keyword = ''): array
+    public function getSellerListings(string $sellerUsername, int $limit = 200, string $offset = '', string $keyword = '', string $categoryId = ''): array
     {
         $this->authenticate();
         
-        // When no keyword is provided, use 'a' as the broadest search term
-        // to return the largest number of the seller's items
-        $searchTerm = $keyword ?: 'a';
+        // When no keyword is provided, default to 'dvd' which returns the most items
+        $searchTerm = $keyword ?: 'dvd';
         
         $params = [
             'q' => $searchTerm,
@@ -255,6 +254,9 @@ class EbayApi
         ];
         if ($offset) {
             $params['offset'] = $offset;
+        }
+        if ($categoryId) {
+            $params['category_ids'] = $categoryId;
         }
 
         $url = $this->apiBase() . '/buy/browse/v1/item_summary/search?' . http_build_query($params);
