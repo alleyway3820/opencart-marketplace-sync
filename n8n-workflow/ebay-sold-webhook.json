@@ -1,0 +1,218 @@
+{
+  "name": "eBay Sold → OC Stock Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "protocol": "imap",
+        "host": "imap.gmail.com",
+        "port": 993,
+        "user": "tonyc@ageek4less.com",
+        "connectionType": "credentials",
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute",
+              "value": 5
+            }
+          ]
+        },
+        "options": {
+          "flagSeen": true,
+          "filter": true
+        }
+      },
+      "name": "Check Gmail Inbox",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "id": "sender_filter",
+              "leftValue": "{{ $json.from }}",
+              "rightValue": "@ebay.com",
+              "operator": {
+                "type": "string",
+                "category": "string",
+                "operation": "endsWith"
+              }
+            },
+            {
+              "id": "subject_filter_1",
+              "leftValue": "{{ $json.subject }}",
+              "rightValue": "You sold an item",
+              "operator": {
+                "sameAs": false,
+                "type": "string",
+                "category": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "subject_filter_2",
+              "leftValue": "{{ $json.subject }}",
+              "rightValue": "Congratulations, you sold your item",
+              "operator": {
+                "sameAs": false,
+                "type": "string",
+                "category": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "name": "Filter eBay Sold Emails",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract eBay item ID, order ID, and quantity from eBay's sold email.\n// eBay emails typically contain URLs like:\n//   http://www.ebay.com/itm/335678901234\n// or text like:\n//   Item ID: 335678901234\n//   Order # 25-12345-67890\n\nconst email = $json.html || $json.text || $json.body || '';\nconst subject = $json.subject || '';\n\nlet result = {\n  email_message_id: $json.messageId || '',\n  from: $json.from,\n  subject: subject,\n  raw_html_snippet: email.substring(0, 500),\n};\n\n// Extract eBay item ID from URL pattern: /itm/335678901234\nconst itemIdUrlMatch = email.match(/\\/itm\\/(?:[a-zA-Z0-9_-]+)?(\\d{10,13})/);\nif (itemIdUrlMatch) {\n  result.ebay_item_id = itemIdUrlMatch[1];\n}\n\n// Fallback: Item ID or Item Number label\nif (!result.ebay_item_id) {\n  const itemIdLabelMatch = email.match(/Item\\s*(?:ID|Number)\\s*[#:\\s]+(\\d{10,13})/i);\n  if (itemIdLabelMatch) {\n    result.ebay_item_id = itemIdLabelMatch[1];\n  }\n}\n\n// Extract eBay order ID (format: 25-12345-67890)\nconst orderMatch = email.match(/Order\\s*(?:number|ID|#|Number)?\\s*[#:\\s]*(\\d{2}-\\d{5}-\\d{5})/i);\nif (orderMatch) {\n  result.ebay_order_id = orderMatch[1];\n}\n\n// Extract quantity sold\nconst qtyMatch = email.match(/You sold (\\d+) /i);\nresult.qty_sold = qtyMatch ? parseInt(qtyMatch[1]) : 1;\n\n// Validate we got what we need\nif (!result.ebay_item_id) {\n  throw new Error(`Could not extract eBay item ID from email. Subject: ${subject}. Body snippet: ${email.substring(0, 300)}`);\n}\n\nreturn result;"
+      },
+      "name": "Parse eBay Item ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://geekygoodygoods.com/webhook/ebay-sold.php",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"email_message_id\": \"{{ $json.email_message_id }}\",\n  \"ebay_item_id\": \"{{ $json.ebay_item_id }}\",\n  \"ebay_order_id\": \"{{ $json.ebay_order_id }}\",\n  \"qty_sold\": {{ $json.qty_sold }}\n}",
+        "options": {
+          "timeout": 10000,
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "name": "POST to OC Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 300],
+      "credentials": {
+        "httpHeaderAuth": [
+          {
+            "id": "webhook-auth",
+            "name": "Webhook Secret Auth"
+          }
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "check_status",
+              "leftValue": "{{ $json.status }}",
+              "rightValue": "ok",
+              "operator": {
+                "type": "string",
+                "category": "string",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "name": "Check Response",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stock updated successfully\nreturn [{\n  item: $json.ebay_item_id,\n  product: $json.product_id,\n  old_qty: $json.old_quantity,\n  new_qty: $json.new_quantity\n}];"
+      },
+      "name": "Log Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Item not found or already processed\nconst status = $json.status || 'unknown';\nreturn [{\n  item: $json.ebay_item_id,\n  status: status,\n  product: $json.product_id || 'N/A',\n  message: $json.error || 'Unknown response'\n}];"
+      },
+      "name": "Log Skip/Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 400]
+    }
+  ],
+  "connections": {
+    "Check Gmail Inbox": {
+      "main": [
+        [
+          {
+            "node": "Filter eBay Sold Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter eBay Sold Emails": {
+      "main": [
+        [
+          {
+            "node": "Parse eBay Item ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Parse eBay Item ID": {
+      "main": [
+        [
+          {
+            "node": "POST to OC Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST to OC Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Response": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Skip/Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

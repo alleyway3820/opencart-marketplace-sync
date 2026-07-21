@@ -37,8 +37,8 @@ class OpenCartSyncEngine
         $title = $listing['title'] ?? 'Unknown';
 
         try {
-            // Check if already synced (by SKU = marketplace item ID)
-            $existingId = $this->ocDb->getProductByListingId($itemId);
+            // Check if already synced (by ebay_item_id column)
+            $existingId = $this->ocDb->getProductByEbayItemId($itemId);
 
             // Map to OpenCart fields
             $productData = $this->mapToProduct($listing);
@@ -116,7 +116,8 @@ class OpenCartSyncEngine
 
         return [
             'model'          => $this->truncate($name, 64),
-            'sku'            => $listing['item_id'] ?? '',
+            'sku'            => '',
+            'ebay_item_id'   => $listing['item_id'] ?? '',
             'quantity'       => max(0, (int)($listing['quantity'] ?? 1)),
             'price'          => $this->formatPrice($listing['price'] ?? '0.00'),
             'image'          => '',

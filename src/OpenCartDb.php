@@ -35,6 +35,7 @@ class OpenCartDb
 
     /**
      * Find a product by its eBay listing ID stored in the SKU field.
+     * Legacy — prefer getProductByEbayItemId().
      */
     public function getProductByListingId(string $listingId): ?int
     {
@@ -52,9 +53,122 @@ class OpenCartDb
     }
 
     /**
+     * Find a product by its dedicated ebay_item_id column.
+     * Looks up both the full v1|ID|0 format and bare numeric ID.
+     */
+    public function getProductByEbayItemId(string $ebayItemId): ?int
+    {
+        try {
+            $numericId = preg_replace('/[^0-9]/', '', $ebayItemId);
+            $v1Id = "v1|{$numericId}|0";
+
+            $stmt = $this->db->prepare(
+                "SELECT product_id FROM {$this->prefix}product
+                 WHERE ebay_item_id IN (?, ?) LIMIT 1"
+            );
+            $stmt->execute([$numericId, $v1Id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ? (int)$row["product_id"] : null;
+        } catch (PDOException $e) {
+            error_log("OpenCartDb::getProductByEbayItemId error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Update stock for a product by ebay_item_id.
+     * Returns the new quantity after decrement, or null on failure.
+     */
+    public function decrementStockByEbayItemId(string $ebayItemId, int $qty = 1): ?array
+    {
+        try {
+            $numericId = preg_replace('/[^0-9]/', '', $ebayItemId);
+            $v1Id = "v1|{$numericId}|0";
+
+            $this->db->beginTransaction();
+
+            // Find the product
+            $stmt = $this->db->prepare(
+                "SELECT product_id, quantity FROM {$this->prefix}product
+                 WHERE ebay_item_id IN (?, ?) LIMIT 1"
+            );
+            $stmt->execute([$numericId, $v1Id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                $this->db->rollBack();
+                return null;
+            }
+
+            $productId = (int)$row['product_id'];
+            $oldQty = (int)$row['quantity'];
+
+            // Decrement, floor at 0
+            $newQty = max(0, $oldQty - $qty);
+
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->prefix}product
+                 SET quantity = ?, date_modified = NOW()
+                 WHERE product_id = ?"
+            );
+            $stmt->execute([$newQty, $productId]);
+
+            $this->db->commit();
+
+            return [
+                'product_id' => $productId,
+                'old_quantity' => $oldQty,
+                'new_quantity' => $newQty,
+            ];
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            error_log("OpenCartDb::decrementStockByEbayItemId error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Record a processed eBay sold event for idempotency.
+     */
+    public function recordSoldEvent(string $emailMsgId, string $ebayOrderId, string $ebayItemId, int $productId, int $qtySold, int $newQty): bool
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "INSERT INTO oc_ebay_sold_events
+                    (email_message_id, ebay_order_id, ebay_item_id, product_id, qty_sold, new_quantity, processed_at)
+                 VALUES (?, ?, ?, ?, ?, ?, NOW())"
+            );
+            $stmt->execute([$emailMsgId, $ebayOrderId, $ebayItemId, $productId, $qtySold, $newQty]);
+            return true;
+        } catch (PDOException $e) {
+            error_log("OpenCartDb::recordSoldEvent error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Check if a sold event was already processed (by email_message_id).
+     */
+    public function isSoldEventProcessed(string $emailMsgId): ?array
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT id, product_id, new_quantity FROM oc_ebay_sold_events
+                 WHERE email_message_id = ? LIMIT 1"
+            );
+            $stmt->execute([$emailMsgId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ?: null;
+        } catch (PDOException $e) {
+            error_log("OpenCartDb::isSoldEventProcessed error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Create a new product with description, category, store, and SEO URL.
      *
-     * @param array $data Keys: model, sku, quantity, price, image, status, name, description,
+     * @param array $data Keys: model, sku, ebay_item_id, quantity, price, image, status, name, description,
      *                    meta_title, category_id
      * @return int|null New product_id or null on failure
      */
@@ -67,7 +181,7 @@ class OpenCartDb
 
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->prefix}product SET
-                    model = ?, sku = ?, quantity = ?, stock_status_id = 6,
+                    model = ?, sku = ?, ebay_item_id = ?, quantity = ?, stock_status_id = 6,
                     image = ?, manufacturer_id = ?, shipping = 1, price = ?,
                     points = 0, tax_class_id = 9, rating = 0, date_available = ?,
                     weight = ?, weight_class_id = ?, length = ?, width = ?,
@@ -77,6 +191,7 @@ class OpenCartDb
             $stmt->execute([
                 $data["model"] ?? "",
                 $data["sku"] ?? "",
+                $data["ebay_item_id"] ?? null,
                 (int)($data["quantity"] ?? 1),
                 $data["image"] ?? "",
                 (int)($data["manufacturer_id"] ?? 0),
